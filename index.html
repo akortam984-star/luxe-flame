@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
 <style>
 /* ── Reset & Base ─────────────────────────────────────── */
@@ -1404,17 +1403,8 @@ footer {
 const SUPABASE_URL  = 'https://kusdvbrgseyekprfblzu.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1c2R2YnJnc2V5ZWtwcmZibHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU4NDksImV4cCI6MjA5NjM1MTg0OX0.JdnZBfY-rqjn_VjwSaknWomY-vCBbqxxBfEgmMYXd8A';
 
-// EmailJS — create a free account at emailjs.com, connect your Ionos SMTP
-// service, create a template, then paste your IDs below.
-const EMAILJS_PUBLIC_KEY  = 'YOUR_EMAILJS_PUBLIC_KEY';
-const EMAILJS_SERVICE_ID  = 'YOUR_EMAILJS_SERVICE_ID';   // e.g. 'service_ionos'
-const EMAILJS_TEMPLATE_ID = 'YOUR_EMAILJS_TEMPLATE_ID'; // e.g. 'template_order'
-
 // ── Init ─────────────────────────────────────────────────────
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-if (EMAILJS_PUBLIC_KEY !== 'YOUR_EMAILJS_PUBLIC_KEY') {
-  emailjs.init(EMAILJS_PUBLIC_KEY);
-}
 
 // ── Helpers ──────────────────────────────────────────────────
 function egp(amount) {
@@ -1593,21 +1583,15 @@ document.getElementById('submitOrder').addEventListener('click', async () => {
     return;
   }
 
-  // Send email notification via EmailJS
-  if (EMAILJS_PUBLIC_KEY !== 'YOUR_EMAILJS_PUBLIC_KEY') {
-    try {
-      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-        customer_name:    name,
-        customer_email:   email,
-        customer_phone:   phone,
-        customer_address: address,
-        order_items:      cart.map(i => `${i.name} × ${i.qty} — ${egp(i.price * i.qty)}`).join('\n'),
-        order_total:      egp(cartTotal()),
-        notes:            notes || 'None'
-      });
-    } catch (emailErr) {
-      console.warn('Email notification failed:', emailErr);
-    }
+  // Send email notifications via Vercel serverless function
+  try {
+    await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(orderData)
+    });
+  } catch (emailErr) {
+    console.warn('Email notification failed:', emailErr);
   }
 
   document.getElementById('checkoutForm').style.display = 'none';
