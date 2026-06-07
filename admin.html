@@ -683,6 +683,10 @@ body {
         <div class="stat-label">Revenue</div>
         <div class="stat-value" id="statRevenue">—</div>
       </div>
+      <div class="stat-card" id="emailStatCard" style="cursor:pointer;" title="Click to check email configuration" onclick="checkEmailStatus()">
+        <div class="stat-label">Email Alerts</div>
+        <div class="stat-value" id="statEmail" style="font-size:1.3rem;">—</div>
+      </div>
     </div>
 
     <!-- Products Tab -->
@@ -843,9 +847,32 @@ document.querySelectorAll('.nav-tab').forEach(btn => {
   });
 });
 
+// ── Email status check ────────────────────────────────────────
+async function checkEmailStatus() {
+  const el = document.getElementById('statEmail');
+  el.textContent = '…';
+  try {
+    const res  = await fetch('/api/send-email');
+    const data = await res.json();
+    if (data.configured) {
+      el.textContent = '✓ Active';
+      el.style.color = 'var(--success)';
+      toast(`Email active — sending from ${data.from_address}`);
+    } else {
+      el.textContent = '✗ Not set';
+      el.style.color = 'var(--danger)';
+      toast('Email not configured. Add RESEND_API_KEY + ADMIN_EMAIL in Vercel env vars.', true);
+    }
+  } catch {
+    el.textContent = '? Error';
+    el.style.color = 'var(--muted)';
+  }
+}
+
 // ── Dashboard data ───────────────────────────────────────────
 async function loadDashboard() {
   loadProducts();
+  checkEmailStatus();
 
   const [{ count: pCount }, { data: orders }] = await Promise.all([
     sb.from('products').select('*', { count: 'exact', head: true }),
