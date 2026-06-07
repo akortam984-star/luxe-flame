@@ -1170,7 +1170,7 @@ footer {
     </div>
     <div class="brand-text">
       <div class="brand-name">Luxe Flame</div>
-      <div class="brand-tagline">Handcrafted Luxury Candles</div>
+      <div class="brand-tagline" id="site-tagline">Handcrafted Luxury Candles</div>
     </div>
   </div>
   <nav>
@@ -1187,12 +1187,12 @@ footer {
 
 <!-- ── Hero ────────────────────────────────────────────────── -->
 <section class="hero">
-  <div class="hero-bg"></div>
+  <div class="hero-bg" id="site-hero-bg"></div>
   <div class="hero-overlay"></div>
   <div class="hero-content">
     <div class="hero-label">✦ Handcrafted in Egypt ✦</div>
-    <h1>Light Up<br><em>Luxury</em></h1>
-    <p class="hero-sub">Premium candles that transform your world</p>
+    <h1 id="site-hero-title">Light Up<br><em>Luxury</em></h1>
+    <p class="hero-sub" id="site-hero-subtitle">Premium candles that transform your world</p>
     <a href="#products" class="btn-primary">
       Explore the Collection
       <span>→</span>
@@ -1212,8 +1212,8 @@ footer {
         <p class="section-label">✦ Our Story</p>
         <h2 class="section-title">Crafted with<br><em class="serif" style="font-style:italic; color:var(--gold)">Passion & Precision</em></h2>
         <div class="section-line"></div>
-        <p>Every Luxe Flame candle is a labour of love — born from the finest natural waxes, exotic essential oils, and a dedication to artistry that elevates the everyday into something extraordinary.</p>
-        <p>We believe your surroundings should tell a story. Let ours be written in light.</p>
+        <p id="site-about-1">Every Luxe Flame candle is a labour of love — born from the finest natural waxes, exotic essential oils, and a dedication to artistry that elevates the everyday into something extraordinary.</p>
+        <p id="site-about-2">We believe your surroundings should tell a story. Let ours be written in light.</p>
         <div class="pillars">
           <div class="pillar">
             <div class="pillar-icon">🌿</div>
@@ -1272,17 +1272,17 @@ footer {
       <div class="contact-details">
         <div class="contact-detail">
           <div class="contact-detail-icon">✉</div>
-          <span>info@luxe-flame.com</span>
+          <span id="site-contact-email">info@luxe-flame.com</span>
         </div>
         <div class="contact-detail">
           <div class="contact-detail-icon">📞</div>
-          <span>+20 100 000 0000</span>
+          <span id="site-contact-phone">+20 100 000 0000</span>
         </div>
         <div class="contact-detail">
           <div class="contact-detail-icon">📍</div>
-          <span>Cairo, Egypt</span>
+          <span id="site-contact-address">Cairo, Egypt</span>
         </div>
-        <a href="https://www.instagram.com/luxe_flame/" target="_blank" class="btn-primary" style="display:inline-flex;width:fit-content;margin-top:12px;">
+        <a href="https://www.instagram.com/luxe_flame/" target="_blank" id="site-instagram-link" class="btn-primary" style="display:inline-flex;width:fit-content;margin-top:12px;">
           Follow on Instagram ✦
         </a>
       </div>
@@ -1329,7 +1329,7 @@ footer {
         <a href="admin.html">Admin</a>
       </div>
       <div class="footer-social">
-        <a href="https://www.instagram.com/luxe_flame/" target="_blank" class="social-link" title="Instagram">📸</a>
+        <a href="https://www.instagram.com/luxe_flame/" target="_blank" id="site-instagram-footer" class="social-link" title="Instagram">📸</a>
       </div>
     </div>
     <div class="footer-bottom">
@@ -1649,9 +1649,75 @@ async function loadProducts() {
   `).join('');
 }
 
+// ── Site Settings ────────────────────────────────────────────
+async function loadSiteSettings() {
+  try {
+    const { data, error } = await sb.from('site_settings').select('*');
+    if (error || !data) return;
+
+    const s = {};
+    data.forEach(r => { s[r.key] = r.value; });
+
+    // Tagline
+    if (s.tagline) {
+      const el = document.getElementById('site-tagline');
+      if (el) el.textContent = s.tagline;
+    }
+
+    // Hero
+    if (s.hero_title) {
+      const el = document.getElementById('site-hero-title');
+      if (el) el.innerHTML = s.hero_title;
+    }
+    if (s.hero_subtitle) {
+      const el = document.getElementById('site-hero-subtitle');
+      if (el) el.textContent = s.hero_subtitle;
+    }
+    if (s.hero_image_url) {
+      const el = document.getElementById('site-hero-bg');
+      if (el) el.style.backgroundImage = `url('${s.hero_image_url}')`;
+    }
+
+    // About
+    if (s.about_text_1) {
+      const el = document.getElementById('site-about-1');
+      if (el) el.textContent = s.about_text_1;
+    }
+    if (s.about_text_2) {
+      const el = document.getElementById('site-about-2');
+      if (el) el.textContent = s.about_text_2;
+    }
+
+    // Contact
+    if (s.contact_email) {
+      const el = document.getElementById('site-contact-email');
+      if (el) el.textContent = s.contact_email;
+    }
+    if (s.contact_phone) {
+      const el = document.getElementById('site-contact-phone');
+      if (el) el.textContent = s.contact_phone;
+    }
+    if (s.contact_address) {
+      const el = document.getElementById('site-contact-address');
+      if (el) el.textContent = s.contact_address;
+    }
+
+    // Instagram
+    if (s.instagram_url) {
+      ['site-instagram-link','site-instagram-footer'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.href = s.instagram_url;
+      });
+    }
+  } catch (e) {
+    console.warn('Could not load site settings:', e.message);
+  }
+}
+
 // ── Boot ──────────────────────────────────────────────────────
 updateCartCount();
 loadProducts();
+loadSiteSettings();
 </script>
 </body>
 </html>
