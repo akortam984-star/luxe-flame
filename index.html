@@ -569,6 +569,8 @@ nav a:hover::after { right: 0; }
   font-family: 'Cormorant Garamond', serif;
   font-size: 1.5rem;
 }
+.out-of-stock-card { opacity: 0.55; pointer-events: none; }
+.out-of-stock-card .product-overlay { display: none; }
 
 /* ── Toast ────────────────────────────────────────────── */
 .toast {
@@ -1625,15 +1627,22 @@ async function loadProducts() {
     return;
   }
 
-  grid.innerHTML = products.map(p => `
-    <div class="product-card">
+  grid.innerHTML = products.map(p => {
+    const outOfStock = p.stock_count !== null && p.stock_count !== undefined && p.stock_count <= 0;
+    const lowStock   = p.stock_count !== null && p.stock_count !== undefined && p.stock_count > 0 && p.stock_count <= 5;
+    const pJson      = JSON.stringify(p).replace(/"/g, '&quot;');
+    return `
+    <div class="product-card${outOfStock ? ' out-of-stock-card' : ''}">
       <div class="product-img-wrap">
         <img src="${p.image_url || 'candle.jpg'}" alt="${p.name}" loading="lazy" onerror="this.src='candle.jpg'">
-        <div class="product-overlay">
-          <button class="quick-add" onclick="addToCart(${JSON.stringify(p).replace(/"/g, '&quot;')})">
-            Add to Cart
-          </button>
-        </div>
+        ${!outOfStock ? `<div class="product-overlay">
+          <button class="quick-add" onclick="addToCart(${pJson})">Add to Cart</button>
+        </div>` : ''}
+        ${outOfStock
+          ? '<div class="out-of-stock-badge">Out of Stock</div>'
+          : lowStock
+            ? `<div class="out-of-stock-badge" style="background:rgba(201,169,110,0.15);color:var(--gold);border-color:var(--gold)">Only ${p.stock_count} left</div>`
+            : ''}
       </div>
       <div class="product-body">
         <h3 class="product-name">${p.name}</h3>
@@ -1641,12 +1650,16 @@ async function loadProducts() {
         <div class="product-footer">
           <div>
             <div class="product-price">${egp(p.price)}</div>
+            ${p.stock_count !== null && p.stock_count !== undefined && !outOfStock
+              ? `<div class="product-price-label">${p.stock_count} in stock</div>` : ''}
           </div>
-          <button class="add-btn" onclick="addToCart(${JSON.stringify(p).replace(/"/g, '&quot;')})" title="Add to cart">+</button>
+          <button class="add-btn" onclick="addToCart(${pJson})"
+            title="${outOfStock ? 'Out of stock' : 'Add to cart'}"
+            ${outOfStock ? 'disabled' : ''}>+</button>
         </div>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── Boot ──────────────────────────────────────────────────────
