@@ -1,7 +1,13 @@
-// Luxe Flame — Email Notification Serverless Function
-// Required Vercel env var: RESEND_API_KEY
-// Notification email is stored in Supabase site_settings (key: notification_email)
-// and configured via the Admin Dashboard → Settings tab.
+// Luxe Flame — Email Notification via Ionos SMTP
+//
+// Required Vercel env vars (Project Settings → Environment Variables):
+//   SMTP_USER  — your full Ionos email address  e.g. orders@yourdomain.com
+//   SMTP_PASS  — your Ionos email password
+//
+// Notification email is set in Admin Dashboard → Settings → "Your Notification Email"
+// Customer confirmation is always sent to the email the customer enters at checkout.
+
+import nodemailer from 'nodemailer';
 
 const SUPABASE_URL  = 'https://kusdvbrgseyekprfblzu.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1c2R2YnJnc2V5ZWtwcmZibHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU4NDksImV4cCI6MjA5NjM1MTg0OX0.JdnZBfY-rqjn_VjwSaknWomY-vCBbqxxBfEgmMYXd8A';
@@ -35,7 +41,7 @@ function itemRows(items = []) {
     </tr>`).join('');
 }
 
-function adminHtml({ customer_name, customer_email, customer_phone, customer_address, items, total, notes, storeName }) {
+function buildAdminHtml({ customer_name, customer_email, customer_phone, customer_address, items, total, notes, storeName }) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#0d0c0b;font-family:'Helvetica Neue',Arial,sans-serif;">
   <div style="max-width:580px;margin:0 auto;padding:40px 24px;">
@@ -70,7 +76,7 @@ function adminHtml({ customer_name, customer_email, customer_phone, customer_add
 </body></html>`;
 }
 
-function customerHtml({ customer_name, items, total, storeName, notificationEmail }) {
+function buildCustomerHtml({ customer_name, items, total, storeName, replyTo }) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#0d0c0b;font-family:'Helvetica Neue',Arial,sans-serif;">
   <div style="max-width:580px;margin:0 auto;padding:40px 24px;">
@@ -98,23 +104,12 @@ function customerHtml({ customer_name, items, total, storeName, notificationEmai
     </div>
     <div style="background:#131210;border:1px solid rgba(201,169,110,0.2);border-radius:16px;padding:20px;text-align:center;">
       <p style="color:#7a7060;font-size:13px;margin:0;">
-        Questions? <a href="mailto:${notificationEmail}" style="color:#c9a96e;">${notificationEmail}</a>
+        Questions? Reply to this email or contact us at <a href="mailto:${replyTo}" style="color:#c9a96e;">${replyTo}</a>
       </p>
     </div>
     <p style="color:#3a3530;font-size:11px;text-align:center;margin-top:24px;">© 2026 ${storeName} · Egypt 🇪🇬</p>
   </div>
 </body></html>`;
-}
-
-async function sendEmail({ apiKey, from, to, subject, html }) {
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, html }),
-  });
-  const data = await r.json();
-  if (!r.ok) throw new Error(data.message || `Resend HTTP ${r.status}`);
-  return data;
 }
 
 export default async function handler(req, res) {
@@ -123,31 +118,31 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  const FROM_ADDRESS   = process.env.STORE_FROM || 'Luxe Flame <onboarding@resend.dev>';
+  const SMTP_USER = process.env.SMTP_USER; // your Ionos email address
+  const SMTP_PASS = process.env.SMTP_PASS; // your Ionos email password
 
   // GET — health check for admin dashboard
   if (req.method === 'GET') {
     const settings = await getSettings();
     return res.status(200).json({
-      configured:          !!RESEND_API_KEY && !!settings.notification_email,
-      api_key_set:         !!RESEND_API_KEY,
-      notification_email:  settings.notification_email || null,
-      from_address:        FROM_ADDRESS,
+      configured:         !!SMTP_USER && !!SMTP_PASS && !!settings.notification_email,
+      smtp_user_set:      !!SMTP_USER,
+      smtp_pass_set:      !!SMTP_PASS,
+      notification_email: settings.notification_email || null,
     });
   }
 
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  if (!RESEND_API_KEY) {
-    console.error('[send-email] RESEND_API_KEY not set in Vercel env vars');
-    return res.status(200).json({ ok: false, error: 'RESEND_API_KEY not configured' });
+  if (!SMTP_USER || !SMTP_PASS) {
+    console.error('[send-email] SMTP_USER or SMTP_PASS not set in Vercel env vars');
+    return res.status(200).json({ ok: false, error: 'SMTP credentials not configured in Vercel' });
   }
 
-  // Fetch settings (notification_email lives here now)
-  const settings = await getSettings();
+  // Fetch notification email + store name from Supabase settings
+  const settings          = await getSettings();
   const NOTIFICATION_EMAIL = settings.notification_email || null;
-  const STORE_NAME         = settings.tagline ? 'Luxe Flame' : (process.env.STORE_NAME || 'Luxe Flame');
+  const STORE_NAME         = process.env.STORE_NAME || 'Luxe Flame';
 
   const {
     customer_name,
@@ -159,42 +154,51 @@ export default async function handler(req, res) {
     notes,
   } = req.body || {};
 
+  // Create Ionos SMTP transporter
+  const transporter = nodemailer.createTransport({
+    host:   'smtp.ionos.com',
+    port:   587,
+    secure: false, // STARTTLS
+    auth:   { user: SMTP_USER, pass: SMTP_PASS },
+  });
+
   const results = {};
 
-  // ── Admin alert ───────────────────────────────────────────────
+  // ── Admin order alert ─────────────────────────────────────────
   if (NOTIFICATION_EMAIL) {
     try {
-      results.admin = await sendEmail({
-        apiKey:  RESEND_API_KEY,
-        from:    FROM_ADDRESS,
+      await transporter.sendMail({
+        from:    `"${STORE_NAME}" <${SMTP_USER}>`,
         to:      NOTIFICATION_EMAIL,
         subject: `🕯 New Order — ${customer_name} · ${egp(total)}`,
-        html:    adminHtml({ customer_name, customer_email, customer_phone, customer_address, items, total, notes, storeName: STORE_NAME }),
+        html:    buildAdminHtml({ customer_name, customer_email, customer_phone, customer_address, items, total, notes, storeName: STORE_NAME }),
       });
       console.log('[send-email] Admin alert sent to', NOTIFICATION_EMAIL);
+      results.admin = { ok: true };
     } catch (err) {
       console.error('[send-email] Admin alert failed:', err.message);
-      results.admin = { error: err.message };
+      results.admin = { ok: false, error: err.message };
     }
   } else {
-    console.warn('[send-email] No notification_email set — skipping admin alert. Set it in Admin → Settings.');
-    results.admin = { skipped: true, reason: 'notification_email not configured in admin settings' };
+    console.warn('[send-email] notification_email not set — go to Admin → Settings to configure it');
+    results.admin = { skipped: true, reason: 'notification_email not set in admin settings' };
   }
 
   // ── Customer confirmation ─────────────────────────────────────
   if (customer_email) {
     try {
-      results.customer = await sendEmail({
-        apiKey:  RESEND_API_KEY,
-        from:    FROM_ADDRESS,
-        to:      customer_email,
-        subject: `🕯 Your Luxe Flame order is confirmed!`,
-        html:    customerHtml({ customer_name, items, total, storeName: STORE_NAME, notificationEmail: NOTIFICATION_EMAIL || 'info@luxe-flame.com' }),
+      await transporter.sendMail({
+        from:     `"${STORE_NAME}" <${SMTP_USER}>`,
+        to:       customer_email,
+        replyTo:  SMTP_USER,
+        subject:  `🕯 Your ${STORE_NAME} order is confirmed!`,
+        html:     buildCustomerHtml({ customer_name, items, total, storeName: STORE_NAME, replyTo: SMTP_USER }),
       });
       console.log('[send-email] Customer confirmation sent to', customer_email);
+      results.customer = { ok: true };
     } catch (err) {
       console.error('[send-email] Customer email failed:', err.message);
-      results.customer = { error: err.message };
+      results.customer = { ok: false, error: err.message };
     }
   }
 
