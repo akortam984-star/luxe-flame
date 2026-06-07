@@ -1616,7 +1616,8 @@ async function loadProducts() {
     .order('created_at', { ascending: false });
 
   if (error || !products) {
-    grid.innerHTML = `<div class="products-empty">Unable to load collection. Please try again later.</div>`;
+    console.error('Supabase loadProducts error:', error);
+    grid.innerHTML = `<div class="products-empty">Unable to load collection — please refresh the page.</div>`;
     return;
   }
 
