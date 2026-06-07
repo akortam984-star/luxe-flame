@@ -989,7 +989,12 @@ async function loadProducts() {
     .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) { toast('Failed to load products.', true); return; }
+  if (error) {
+    console.error('loadProducts error:', error);
+    document.getElementById('productTableBody').innerHTML =
+      `<div class="empty-row" style="color:var(--danger)">Failed to load products: ${error.message}</div>`;
+    return;
+  }
   products = data || [];
   renderProductTable();
 }
