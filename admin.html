@@ -868,7 +868,7 @@ let selectedImgFile = null;
 let currentImageUrl = null;
 
 async function loadProducts() {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('products')
     .select('*')
     .order('created_at', { ascending: false });
@@ -1050,7 +1050,7 @@ async function loadOrders() {
   const wrap = document.getElementById('ordersList');
   wrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Loading…</div>';
 
-  const { data: orders, error } = await supabase
+  const { data: orders, error } = await sb
     .from('orders')
     .select('*')
     .order('created_at', { ascending: false });
