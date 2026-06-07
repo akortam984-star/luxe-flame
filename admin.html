@@ -771,7 +771,7 @@ body {
 const SUPABASE_URL  = 'https://kusdvbrgseyekprfblzu.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1c2R2YnJnc2V5ZWtwcmZibHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU4NDksImV4cCI6MjA5NjM1MTg0OX0.JdnZBfY-rqjn_VjwSaknWomY-vCBbqxxBfEgmMYXd8A';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Helpers ──────────────────────────────────────────────────
 function egp(n) {
@@ -789,7 +789,7 @@ function toast(msg, isError = false) {
 }
 
 // ── Auth ─────────────────────────────────────────────────────
-supabase.auth.onAuthStateChange((event, session) => {
+sb.auth.onAuthStateChange((event, session) => {
   if (session) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('adminApp').style.display = 'block';
@@ -812,7 +812,7 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
   btn.textContent = 'Signing in…';
   errEl.textContent = '';
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
 
   btn.disabled = false;
   btn.textContent = 'Sign In →';
@@ -829,7 +829,7 @@ document.getElementById('loginPassword').addEventListener('keydown', e => {
 });
 
 document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
 });
 
 // ── Tabs ─────────────────────────────────────────────────────
@@ -848,8 +848,8 @@ async function loadDashboard() {
   loadProducts();
 
   const [{ count: pCount }, { data: orders }] = await Promise.all([
-    supabase.from('products').select('*', { count: 'exact', head: true }),
-    supabase.from('orders').select('total, status')
+    sb.from('products').select('*', { count: 'exact', head: true }),
+    sb.from('orders').select('total, status')
   ]);
 
   document.getElementById('statProducts').textContent = pCount ?? '—';
@@ -977,13 +977,13 @@ async function uploadImage(file) {
   const path = `products/${Date.now()}.${ext}`;
   document.getElementById('uploadProgress').textContent = 'Uploading image…';
 
-  const { error } = await supabase.storage
+  const { error } = await sb.storage
     .from('products')
     .upload(path, file, { upsert: true, contentType: file.type });
 
   if (error) throw error;
 
-  const { data } = supabase.storage.from('products').getPublicUrl(path);
+  const { data } = sb.storage.from('products').getPublicUrl(path);
   document.getElementById('uploadProgress').textContent = '✓ Image uploaded';
   return data.publicUrl;
 }
@@ -1015,9 +1015,9 @@ document.getElementById('saveProduct').addEventListener('click', async () => {
 
     let error;
     if (editId) {
-      ({ error } = await supabase.from('products').update(payload).eq('id', editId));
+      ({ error } = await sb.from('products').update(payload).eq('id', editId));
     } else {
-      ({ error } = await supabase.from('products').insert([payload]));
+      ({ error } = await sb.from('products').insert([payload]));
     }
 
     if (error) throw error;
@@ -1039,7 +1039,7 @@ async function deleteProduct(id) {
   if (!product) return;
   if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) return;
 
-  const { error } = await supabase.from('products').delete().eq('id', id);
+  const { error } = await sb.from('products').delete().eq('id', id);
   if (error) { toast(`Delete failed: ${error.message}`, true); return; }
   toast('✓ Product deleted');
   loadDashboard();
@@ -1112,7 +1112,7 @@ async function loadOrders() {
 }
 
 async function updateOrderStatus(id, status) {
-  const { error } = await supabase.from('orders').update({ status }).eq('id', id);
+  const { error } = await sb.from('orders').update({ status }).eq('id', id);
   if (error) {
     toast(`Failed to update status: ${error.message}`, true);
   } else {
