@@ -1404,7 +1404,7 @@ const SUPABASE_URL  = 'https://kusdvbrgseyekprfblzu.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt1c2R2YnJnc2V5ZWtwcmZibHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NzU4NDksImV4cCI6MjA5NjM1MTg0OX0.JdnZBfY-rqjn_VjwSaknWomY-vCBbqxxBfEgmMYXd8A';
 
 // ── Init ─────────────────────────────────────────────────────
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ── Helpers ──────────────────────────────────────────────────
 function egp(amount) {
@@ -1467,14 +1467,20 @@ function renderCart() {
   const totalEl = document.getElementById('cartTotal');
   totalEl.textContent = egp(cartTotal());
 
+  const footer = document.querySelector('.cart-footer');
   if (!cart.length) {
     wrap.innerHTML = `
       <div class="cart-empty">
         <div class="cart-empty-icon">🕯</div>
-        <p>Your cart is empty.<br>Explore our collection.</p>
+        <p>Your cart is empty.</p>
+        <a href="#products" onclick="closeCart()" style="margin-top:8px;display:inline-block;padding:11px 28px;background:linear-gradient(135deg,var(--gold),#a07840);color:var(--bg);border-radius:50px;font-size:0.72rem;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;text-decoration:none;">
+          Shop the Collection
+        </a>
       </div>`;
+    if (footer) footer.style.display = 'none';
     return;
   }
+  if (footer) footer.style.display = 'block';
 
   wrap.innerHTML = cart.map(item => `
     <div class="cart-item">
@@ -1573,7 +1579,7 @@ document.getElementById('submitOrder').addEventListener('click', async () => {
     notes:            notes || null
   };
 
-  const { error } = await supabase.from('orders').insert([orderData]);
+  const { error } = await sb.from('orders').insert([orderData]);
 
   if (error) {
     console.error('Order error:', error);
