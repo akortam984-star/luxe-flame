@@ -828,9 +828,19 @@ body {
         </div>
       </div>
 
+      <!-- Notifications -->
+      <div style="background:var(--bg2);border-radius:16px;padding:28px;">
+        <h3 style="color:var(--gold);font-size:12px;letter-spacing:.2em;text-transform:uppercase;margin:0 0 8px;">Order Notifications</h3>
+        <p style="color:var(--muted);font-size:12px;margin:0 0 20px;">You'll get an email here every time a customer places an order. The customer will also receive a confirmation to their own email.</p>
+        <div class="form-row">
+          <label class="form-label">Your Notification Email</label>
+          <input class="form-input" id="s-notification_email" type="email" placeholder="your@email.com">
+        </div>
+      </div>
+
       <!-- Contact Info -->
       <div style="background:var(--bg2);border-radius:16px;padding:28px;">
-        <h3 style="color:var(--gold);font-size:12px;letter-spacing:.2em;text-transform:uppercase;margin:0 0 20px;">Contact Info</h3>
+        <h3 style="color:var(--gold);font-size:12px;letter-spacing:.2em;text-transform:uppercase;margin:0 0 20px;">Contact Info (shown on site)</h3>
         <div class="form-row">
           <label class="form-label">Email</label>
           <input class="form-input" id="s-contact_email" placeholder="info@luxe-flame.com">
@@ -1268,7 +1278,7 @@ async function loadSettings() {
 async function saveSettings() {
   const keys = ['tagline','hero_title','hero_subtitle','hero_image_url',
                  'about_text_1','about_text_2','contact_email','contact_phone',
-                 'contact_address','instagram_url'];
+                 'contact_address','instagram_url','notification_email'];
 
   const upserts = keys.map(key => {
     const el = document.getElementById('s-' + key);
