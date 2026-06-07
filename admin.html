@@ -722,6 +722,10 @@ body {
             </select>
           </div>
           <div class="form-group">
+            <label>Stock Count <span style="font-size:0.6rem;color:var(--muted);text-transform:none;letter-spacing:0">(leave blank = unlimited)</span></label>
+            <input type="number" id="fStockCount" placeholder="e.g. 10" min="0" step="1">
+          </div>
+          <div class="form-group">
             <label>Product Image</label>
             <div class="img-preview-wrap" id="imgPreviewWrap" onclick="document.getElementById('imgFileInput').click()">
               <div class="img-preview-placeholder" id="imgPlaceholder">
@@ -747,7 +751,7 @@ body {
           <div>Name</div>
           <div>Description</div>
           <div>Price</div>
-          <div>Stock</div>
+          <div>Stock / Count</div>
           <div>Actions</div>
         </div>
         <div id="productTableBody">
@@ -1010,6 +1014,9 @@ function renderProductTable() {
         <span class="stock-badge ${p.in_stock ? 'in' : 'out'}">
           ${p.in_stock ? '● In Stock' : '○ Out of Stock'}
         </span>
+        ${p.stock_count !== null && p.stock_count !== undefined
+          ? `<div style="font-size:0.68rem;color:${p.stock_count <= 3 ? 'var(--danger)' : 'var(--muted)'};margin-top:4px;">${p.stock_count} left</div>`
+          : '<div style="font-size:0.68rem;color:var(--muted);margin-top:4px;">Unlimited</div>'}
       </div>
       <div class="row-actions">
         <button class="btn-edit" onclick="editProduct('${p.id}')" title="Edit">✎</button>
@@ -1037,6 +1044,7 @@ function openForm(product = null) {
   document.getElementById('fPrice').value        = product?.price || '';
   document.getElementById('fDesc').value         = product?.description || '';
   document.getElementById('fStock').value        = product ? String(product.in_stock) : 'true';
+  document.getElementById('fStockCount').value   = product?.stock_count ?? '';
   selectedImgFile = null;
   currentImageUrl = product?.image_url || null;
   document.getElementById('uploadProgress').textContent = '';
@@ -1102,11 +1110,13 @@ async function uploadImage(file) {
 
 // ── Save product ──────────────────────────────────────────────
 document.getElementById('saveProduct').addEventListener('click', async () => {
-  const name  = document.getElementById('fName').value.trim();
-  const price = parseFloat(document.getElementById('fPrice').value);
-  const desc  = document.getElementById('fDesc').value.trim();
-  const stock = document.getElementById('fStock').value === 'true';
-  const editId = document.getElementById('editingId').value;
+  const name        = document.getElementById('fName').value.trim();
+  const price       = parseFloat(document.getElementById('fPrice').value);
+  const desc        = document.getElementById('fDesc').value.trim();
+  const stock       = document.getElementById('fStock').value === 'true';
+  const stockCountRaw = document.getElementById('fStockCount').value;
+  const stockCount  = stockCountRaw === '' ? null : parseInt(stockCountRaw, 10);
+  const editId      = document.getElementById('editingId').value;
 
   if (!name || isNaN(price) || price < 0) {
     toast('Name and a valid price are required.', true);
@@ -1123,7 +1133,7 @@ document.getElementById('saveProduct').addEventListener('click', async () => {
       imageUrl = await uploadImage(selectedImgFile);
     }
 
-    const payload = { name, price, description: desc, in_stock: stock, image_url: imageUrl };
+    const payload = { name, price, description: desc, in_stock: stock, image_url: imageUrl, stock_count: stockCount };
 
     let error;
     if (editId) {
